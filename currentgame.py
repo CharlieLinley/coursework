@@ -36,7 +36,7 @@ class player_arrow(pygame.sprite.Sprite):
             self.center_rotate(1)
         if keys[pygame.K_DOWN]:
             self.center_rotate(-1)
-        screen.blit(self.image, (self.posX, self.posY))
+        screen.blit(self.image, self.rect)
 
 class ball(pygame.sprite.Sprite):
     def __init__(self):
@@ -59,6 +59,7 @@ class ball(pygame.sprite.Sprite):
                self.posY -= 100
                self.jumping = True
         screen.blit(self.image, (self.posX, self.posY))
+        self.gravity()
 
 
 #grouping sprites for easy updating
@@ -76,8 +77,8 @@ def main_game():
         for event in pygame.event.get(): 
             if event.type == pygame.QUIT: #When user presses the quit button
                 running = False #Ends game loop
-        game_sprites.update() #updating all game sprites
         screen.fill(BLUE)
+        game_sprites.update() #updating all game sprites
         pygame.display.flip()
 
 main_game()
