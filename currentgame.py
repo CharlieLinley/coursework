@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 SCREEN_WIDTH = 800 
 SCREEN_HEIGHT = 800
@@ -65,7 +66,7 @@ class ball(pygame.sprite.Sprite):
         #        self.jumping = True
         pygame.draw.circle(screen, (255,255,255), (self.posX, self.posY), self.radius) #White (255,255,255) Outline to circle
         pygame.draw.circle(screen, (0,0,0), (self.posX, self.posY), self.radius - 1) #Main Black (0,0,0) circle body
-        
+        pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball.
         #self.gravity()
 
 
@@ -76,18 +77,36 @@ Ball = ball()
 game_sprites.add(Arrow)
 game_sprites.add(Ball)
 
-def main_game():
-    clock = pygame.time.Clock()   ## Sync fps with timer 
-    running = True
-    while running:
-        clock.tick(FPS) #syncs clock up to game fps
-        for event in pygame.event.get(): 
-            if event.type == pygame.QUIT: #When user presses the quit button
-                running = False #Ends game loop
+click_posX = 0
+click_posY = 0
+time = 0
+power = 0
+angle = 0
+shoot = False
+
+
+'''Main Game Loop'''
+clock = pygame.time.Clock()   ## Sync fps with timer 
+running = True
+while running:
+    mouse_pos = pygame.mouse.get_pos()
+    mouse_line = [(Ball.posX, Ball.posY), mouse_pos] #List with ball and mouse positions
+    clock.tick(FPS) #syncs clock up to game fps
+    for event in pygame.event.get(): 
+        if event.type == pygame.QUIT: #When user presses the quit button
+            running = False #Ends game loop
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if shoot == False:
+                shoot = True
+                x = Ball.posX
+                y = Ball.posY
+                time = 0
+                power = math.sqrt((mouse_line[1][1] - mouse_line[0][1])**2 + (mouse_line[1][0] - mouse_line[0][0])**2) #Pythagorous Thereom equation
+                print(power)
+
         screen.fill(BLUE)
         game_sprites.update() #updating all game sprites
         pygame.display.flip()
-main_game()
-
+\
 
 pygame.quit() #Stops code, only reached once game loop has ended.
