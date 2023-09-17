@@ -28,7 +28,12 @@ class ball(pygame.sprite.Sprite):
 
         return (newX, newY)
 
-    
+    def colissionCheck(self, sprite, type = 'circle'):
+        if type == 'circle':
+            if self.posX < sprite.posX + self.radius and self.posX + sprite.pWidth > sprite.posX and self.posY < sprite.posY + self.radius and sprite.pWidth + self.posY > sprite.posY:
+                print('Colission')
+
+
     def findAngle(self, pos):
         X = self.posX
         Y = self.posY
@@ -61,13 +66,28 @@ class ball(pygame.sprite.Sprite):
         pygame.draw.circle(screen, (255,255,255), (self.posX, self.posY), self.radius) #White (255,255,255) Outline to circle
         pygame.draw.circle(screen, (0,0,0), (self.posX, self.posY), self.radius - 1) #Main Black (0,0,0) circle body
         pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball.
+        self.colissionCheck(test_platform)
 
-
+class platform(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height):
+        pygame.sprite.Sprite.__init__(self)
+        self.posX = x
+        self.posY = y
+        self.pWidth = width
+        self.pHeight = height
+    
+    def update(self):
+        temp_rect = pygame.Rect(self.posX, self.posY, self.pWidth, self.pHeight)
+        pygame.draw.rect(screen, BLUE, temp_rect)
+        
 
 #grouping sprites for easy updating
 game_sprites = pygame.sprite.Group()
+platforms = pygame.sprite.Group()
 Ball = ball()
+test_platform = platform(200, 200, 200, 10)
 game_sprites.add(Ball)
+platforms.add(test_platform)
 
 click_posX = 0
 click_posY = 0
@@ -144,6 +164,8 @@ while running:
     #screen.fill(BLUE)
     screen.blit(yakuza_bg, (0,0))
     game_sprites.update() #updating all game sprites
+    #platforms.update()
+    test_platform.update()
     pygame.display.flip()
         
 
