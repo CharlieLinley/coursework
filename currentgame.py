@@ -16,22 +16,28 @@ class ball(pygame.sprite.Sprite):
         self.radius = 10
         self.posX = SCREEN_WIDTH / 2
         self.posY = SCREEN_HEIGHT - self.radius
+        self.collided = True
 
     def ball_path(self, startx, starty, power, ang, time):
         veloX = math.cos(ang) * power
         veloY = math.sin(ang) * power
+        
+        
         distX = veloX * time
-        distY = (veloY * time) + (0.5 * (-300) * (time ** 2))  # Add gravity effect
+        distmovedY = (0.5 * (-300) * (time ** 2))
+        if distmovedY > (veloY * time):
+            print('Falling')
+        distY = (veloY * time) + distmovedY  # Add gravity effect
 
+
+        self.collided = False
         newX = round(startx + distX)
         newY = round(starty - distY)
 
+
         return (newX, newY)
 
-    def colissionCheck(self, sprite, type = 'circle'):
-        if type == 'circle':
-            if self.posX < sprite.posX + self.radius and self.posX + sprite.pWidth > sprite.posX and self.posY < sprite.posY + self.radius and sprite.pWidth + self.posY > sprite.posY:
-                print('Colission')
+    
 
 
     def findAngle(self, pos):
@@ -41,7 +47,6 @@ class ball(pygame.sprite.Sprite):
             angle = math.atan((Y - pos[1]) / (X - pos[0])) #Tan Trig to find angle
         except:
             angle = math.pi / 2 
-        
         if pos[1] < Y and pos[0] > X:
             angle = abs(angle)
         elif pos[1] < Y and pos[0] < X:
@@ -62,11 +67,18 @@ class ball(pygame.sprite.Sprite):
 
         return impact_angle
     
+    def colissionCheck(self):
+        if pygame.sprite.spritecollideany(self, platforms):
+            print('Collided')
+            #if velY negative then 
+
     def update(self):
+        self.rect = pygame.Rect(self.posX - self.radius, self.posY - self.radius, self.radius * 2, self.radius * 2)
         pygame.draw.circle(screen, (255,255,255), (self.posX, self.posY), self.radius) #White (255,255,255) Outline to circle
         pygame.draw.circle(screen, (0,0,0), (self.posX, self.posY), self.radius - 1) #Main Black (0,0,0) circle body
-        pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball.
-        self.colissionCheck(test_platform)
+        pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball.#
+        pygame.draw.rect(screen, BLUE, self.rect)
+        self.colissionCheck()
 
 class platform(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height):
@@ -75,10 +87,10 @@ class platform(pygame.sprite.Sprite):
         self.posY = y
         self.pWidth = width
         self.pHeight = height
+        self.rect = pygame.Rect(self.posX, self.posY, self.pWidth, self.pHeight)
     
     def update(self):
-        temp_rect = pygame.Rect(self.posX, self.posY, self.pWidth, self.pHeight)
-        pygame.draw.rect(screen, BLUE, temp_rect)
+        pygame.draw.rect(screen, BLUE, self.rect)
         
 
 #grouping sprites for easy updating
@@ -104,13 +116,6 @@ clock = pygame.time.Clock()   ## Sync fps with timer
 running = True
 while running:
     if shoot:
-        # if Ball.posY < (SCREEN_HEIGHT - (Ball.radius + 10)) and not checkReady:
-        #     checkReady = True
-        # if Ball.posY >= (SCREEN_HEIGHT - (Ball.radius + 10)) and not bounceCalc and checkReady:
-        #     # prevX = Ball.posX
-        #     # prevY = Ball.posY
-        #     # print(prevX, prevY)
-        #     bounceCalc = True
         if Ball.posY <= (SCREEN_HEIGHT - Ball.radius): #Ensures ball is off the ground
             time += 0.05
             po = Ball.ball_path(x,y,power,angle,time)
