@@ -2,11 +2,16 @@ import pygame
 import random
 import math
 
+pygame.init()
+
 SCREEN_WIDTH = 800 
 SCREEN_HEIGHT = 800
 FPS = 60
 BLUE = (0,0,255)
+font = pygame.font.Font("C:/Users/Charlie/Desktop/Coursework/coursework/gamefont.ttf", 100)
+font_surf = font.render('Golf Game', False, (0, 0, 0))
 yakuza_bg = pygame.image.load('C:/Users/Charlie/Desktop/Coursework/coursework/yakuza.webp')
+menu_bg = pygame.image.load('C:/Users/Charlie/Desktop/Coursework/coursework/menu_bg.png')
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Golf")
 
@@ -92,6 +97,34 @@ class platform(pygame.sprite.Sprite):
     def update(self):
         pygame.draw.rect(screen, BLUE, self.rect)
         
+class button(pygame.sprite.Sprite):
+    def __init__(self, color, x, y, width, height):
+        pygame.sprite.Sprite.__init__(self)
+        self.color = color
+        # self.x = x
+        # self.y = y
+        # self.width = width
+        # self.height = height
+        self.rect = pygame.Rect(x, y, width, height)
+
+    def clicked(self):
+        mouse_pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mouse_pos):
+           for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN: 
+                    print('Button being clicked')
+                    return True
+        else:
+            return False
+    
+    def update(self):
+        pygame.draw.rect(screen, self.color, self.rect)
+        self.clicked()
+                
+
+buttons = pygame.sprite.Group() # Creating group for all menu buttons.
+button1 = button((0, 0, 255), 400, 400, 10, 10)
+buttons.add(button1)
 
 #grouping sprites for easy updating
 game_sprites = pygame.sprite.Group()
@@ -114,7 +147,9 @@ shoot = False
 '''Main Game Loop'''
 clock = pygame.time.Clock()   ## Sync fps with timer 
 running = True
+menu = True
 while running:
+    events = pygame.event.get()
     if shoot:
         if Ball.posY <= (SCREEN_HEIGHT - Ball.radius): #Ensures ball is off the ground
             time += 0.05
@@ -147,31 +182,34 @@ while running:
             x = Ball.posX
             y = Ball.posY
             time = 0
-            power *= 0.9 #Energy lost to wall
+            power *= 0.8 #Energy lost to wall
+    elif menu:
+        screen.blit(menu_bg, (0,0))
+        buttons.update()
+        screen.blit(font_surf, (250, 200))        
+    else:         
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_line = [(Ball.posX, Ball.posY), mouse_pos] #List with ball and mouse positions
+        for event in events: 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if shoot == False:
+                    shoot = True
+                    x = Ball.posX
+                    y = Ball.posY
+                    time = 0
+                    power = math.sqrt((mouse_line[1][1] - mouse_line[0][1])**2 + (mouse_line[1][0] - mouse_line[0][0])**2) #Pythagorous Thereom equation
+                    angle = Ball.findAngle(pygame.mouse.get_pos()) #Passes in current mouse pos to find angle between it and the ball.
+        #screen.fill(BLUE)
+        screen.blit(yakuza_bg, (0,0))
+        game_sprites.update() #updating all game sprites
+        #platforms.update()
+        test_platform.update()
         
-        
-
-            
+    for event in events: 
+            if event.type == pygame.QUIT: #When user presses the quit button
+                running = False #Ends game loop
+    pygame.display.flip()   
     clock.tick(FPS) #syncs clock up to game fps
-    mouse_pos = pygame.mouse.get_pos()
-    mouse_line = [(Ball.posX, Ball.posY), mouse_pos] #List with ball and mouse positions
-    for event in pygame.event.get(): 
-        if event.type == pygame.QUIT: #When user presses the quit button
-            running = False #Ends game loop
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if shoot == False:
-                shoot = True
-                x = Ball.posX
-                y = Ball.posY
-                time = 0
-                power = math.sqrt((mouse_line[1][1] - mouse_line[0][1])**2 + (mouse_line[1][0] - mouse_line[0][0])**2) #Pythagorous Thereom equation
-                angle = Ball.findAngle(pygame.mouse.get_pos()) #Passes in current mouse pos to find angle between it and the ball.
-    #screen.fill(BLUE)
-    screen.blit(yakuza_bg, (0,0))
-    game_sprites.update() #updating all game sprites
-    #platforms.update()
-    test_platform.update()
-    pygame.display.flip()
-        
+
 
 pygame.quit() #Stops code, only reached once game loop has ended.
