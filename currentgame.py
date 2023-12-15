@@ -2,19 +2,30 @@ import pygame
 import random
 import math
 
-pygame.init()
-
+#Defining Global Variables
 SCREEN_WIDTH = 800 
 SCREEN_HEIGHT = 800
 FPS = 60
 BLUE = (0,0,255)
+
+#Pygame Boilerplate (Initialising pygame, setting caption and screen with size.)
+pygame.init()
+pygame.mixer.init()
+clock = pygame.time.Clock()   ## Sync fps with timer 
+pygame.display.set_caption("Golf")
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+
+
+#Loading files for use
 font = pygame.font.Font("C:/Users/clinl/Desktop/Coursework/coursework/gamefont.ttf", 100)
-font_surf = font.render('Golf Game', False, (0, 0, 0))
+volume_font = pygame.font.Font("C:/Users/clinl/Desktop/Coursework/coursework/gamefont.ttf", 70)
+title_surf = font.render('Golf Game', False, (0, 0, 0))
 playbtn_surf = font.render('   Play', False, (0, 0, 0))
 yakuza_bg = pygame.image.load('C:/Users/clinl/Desktop/Coursework/coursework/yakuza.webp')
 menu_bg = pygame.image.load('C:/Users/clinl/Desktop/Coursework/coursework/menu_bg.png')
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Golf")
+
+
 
 class ball(pygame.sprite.Sprite):
     def __init__(self):
@@ -28,7 +39,6 @@ class ball(pygame.sprite.Sprite):
     def ball_path(self, startx, starty, power, ang, time):
         veloX = math.cos(ang) * power
         veloY = math.sin(ang) * power
-        
         
         distX = veloX * time
         distmovedY = (0.5 * (-300) * (time ** 2))
@@ -104,10 +114,6 @@ class button(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.color = color
         self.clicked = False
-        # self.x = x
-        # self.y = y
-        # self.width = width
-        # self.height = height
         self.rect = pygame.Rect(x, y, width, height)
 
     def checkclicked(self):
@@ -124,6 +130,20 @@ class button(pygame.sprite.Sprite):
         pygame.draw.rect(screen, self.color, self.rect)
         self.clicked = self.checkclicked()
 
+class imagebutton(button):
+    def __init__(self, image, pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(image).convert_alpha()
+        self.clicked = False
+        self.pos = pos
+        self.rect = self.image.get_rect(topleft = pos)
+
+        
+
+    def update(self):
+        self.clicked = self.checkclicked()
+        screen.blit(self.image, self.rect)
+             
 class goal(pygame.sprite.Sprite):
     def __init__(self, x , y, radius):
         pygame.sprite.Sprite.__init__(self)
@@ -139,16 +159,32 @@ class goal(pygame.sprite.Sprite):
     def update(self):
         pygame.draw.circle(screen, (255,255,255), (self.x, self.y), self.radius)
         pygame.draw.circle(screen, (0,0,0), (self.x, self.y), self.radius - 1)
-        
-
         self.win_check()
                 
+def mutebuttoncheck(sound, sound_volume):
+    global muted, image, menu_sound, mutebutton
+    if mutebutton.clicked:
+            if muted == True:
+                image = 'C:/Users/clinl/Desktop/Coursework/coursework/speaker_small.png'
+                muted = False
+                sound.set_volume(sound_volume)
+            else:
+                image = 'C:/Users/clinl/Desktop/Coursework/coursework/speaker-off_small.png'
+                muted = True
+                sound.set_volume(0)
+            mutebutton.image = pygame.image.load(image)
 
-buttons = pygame.sprite.Group() # Creating group for all menu buttons.
+
+#Grouping menu buttons together
+main_menu_buttons = pygame.sprite.Group()
 playbutton = button((0, 255, 0), 250 , 475, 300, 100)
-buttons.add(playbutton)
+mutebutton = imagebutton('C:/Users/clinl/Desktop/Coursework/coursework/speaker_small.png', (700, 700))
+settingsbutton = imagebutton('C:/Users/clinl/Desktop/Coursework/coursework/settings_small.png', (30, 700))
+main_menu_buttons.add(playbutton)
+main_menu_buttons.add(mutebutton)
+main_menu_buttons.add(settingsbutton)
 
-#grouping sprites for easy updating
+#Temp while setting up level select
 game_sprites = pygame.sprite.Group()
 platforms = pygame.sprite.Group()
 Ball = ball()
@@ -157,34 +193,92 @@ test_platform = platform(200, 200, 200, 10)
 game_sprites.add(Ball)
 platforms.add(test_platform)
 
+#Grouping settings buttons and variables together
+music_volume = 1
+display_volume = int(music_volume * 100)
+#sfx_volume = 100
+music_volume_surf = volume_font.render('Music Volume: ' + str(display_volume), False, (0, 0, 0))
+settings_buttons = pygame.sprite.Group()
+backbutton = imagebutton('C:/Users/clinl/Desktop/Coursework/coursework/previous-button_small.png', (700, 30))
+volumeupbutton = imagebutton('C:/Users/clinl/Desktop/Coursework/coursework/up_small.png', (550, 600))
+volumedownbutton = imagebutton('C:/Users/clinl/Desktop/Coursework/coursework/down_small.png', (550, 700))
+settings_buttons.add(backbutton)
+settings_buttons.add(mutebutton)
+settings_buttons.add(volumedownbutton)
+settings_buttons.add(volumeupbutton)
+
+#Defining some key variables to be used in the main loop
 click_posX = 0
 click_posY = 0
 time = 0
 power = 0
 angle = 0
 shoot = False
-# bounceCalc = False #Keeps track if a Position has been stored for bounce angle calc.
-# checkReady = False #Tracks if ball pos should be checked.
-
-
-'''Main Game Loop'''
-clock = pygame.time.Clock()   ## Sync fps with timer 
 running = True
 menu = True
-# level_select = False
+muted = False
+level_select = False
+settings = False
+first_play = bool(True)
+menu_sound = pygame.mixer.Sound("C:/Users/clinl/Desktop/Coursework/coursework/menu.mp3")
+game_sound = pygame.mixer.Sound("C:/Users/clinl/Desktop/Coursework/coursework/game.mp3")
+settings_sound = pygame.mixer.Sound("C:/Users/clinl/Desktop/Coursework/coursework/settings.mp3")
+
 while running:
     events = pygame.event.get()
-    if menu:
+    if menu:  
+        mutebuttoncheck(menu_sound, music_volume)
+        if first_play:
+            menu_sound.play(-1)
+            first_play = False
         screen.blit(menu_bg, (0,0))
-        buttons.update()
-        screen.blit(font_surf, (250, 200))
+        main_menu_buttons.update()
+        screen.blit(title_surf, (250, 200))
         screen.blit(playbtn_surf, playbutton.rect.topleft)
-        if playbutton.clicked == True:
+        if playbutton.clicked:
+            first_play = True
+            menu_sound.stop()
             playbutton.clicked = False
             menu = False
             level_select = True
-    # if level_select:
-
+        if settingsbutton.clicked:
+            menu_sound.stop()
+            first_play = True
+            menu = False
+            settings = True           
+    elif level_select:
+        if first_play:
+            game_sound.play(-1)
+            first_play = False
+        screen.fill((110, 132, 153))
+    elif settings:
+        if muted:
+            settings_sound.set_volume(0 )
+        settings_buttons.update()
+        mutebuttoncheck(settings_sound, music_volume)
+        if first_play:
+            settings_sound.play(-1)
+            first_play = False
+        screen.fill((97, 69, 181))
+        screen.blit(music_volume_surf, (20, 650))
+        settings_buttons.update()
+        if volumeupbutton.clicked:
+            if music_volume < 1:    
+                music_volume += 0.1
+                display_volume = int(music_volume * 100)
+        if volumedownbutton.clicked:
+            if music_volume >= 0.1:
+                music_volume -= 0.1
+                display_volume = int(music_volume * 100)
+        if not muted:
+            settings_sound.set_volume(music_volume)        
+        music_volume_surf = volume_font.render('Music Volume: ' + str(display_volume), False, (0, 0, 0)) 
+        if backbutton.clicked:
+            menu = True
+            settings = False
+            first_play = True
+            settings_sound.stop()
+                 
     else:
         mouse_pos = pygame.mouse.get_pos()
         mouse_line = [(Ball.posX, Ball.posY), mouse_pos] #List with ball and mouse positions
@@ -203,8 +297,6 @@ while running:
                     time = 0
                     angle = Ball.getImpactAngle(angle, power)
                     print(angle)
-                    # angle = Ball.findAngle((prevX, prevY))
-                    # print('Bounce angle is', angle)
                 else:
                     shoot = False
             if Ball.posX >= (SCREEN_HEIGHT - Ball.radius):
@@ -231,17 +323,14 @@ while running:
                         time = 0
                         power = math.sqrt((mouse_line[1][1] - mouse_line[0][1])**2 + (mouse_line[1][0] - mouse_line[0][0])**2) #Pythagorous Thereom equation
                         angle = Ball.findAngle(pygame.mouse.get_pos()) #Passes in current mouse pos to find angle between it and the ball.
-        
         if Ball.colissionCheck() == True:
             shoot = False
             Ball.reset_ball()       
 
-        #screen.fill(BLUE)
         screen.blit(yakuza_bg, (0,0))
         test_platform.update()
         game_sprites.update() #updating all game sprites
         Goal.update()
-        #platforms.update()
     
         
     for event in events: 
