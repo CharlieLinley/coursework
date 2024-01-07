@@ -42,15 +42,12 @@ class ball(pygame.sprite.Sprite):
         distmovedY = (0.5 * (-300) * (time ** 2))
         distY = (veloY * time) + distmovedY  # Add gravity effect
 
-
         self.collided = False
         newX = round(startx + distX)
         newY = round(starty - distY)
         return (newX, newY)
 
     def reset_ball(self):
-        global shoot
-        shoot = True
         self.posX = SCREEN_WIDTH / 2
         self.posY = SCREEN_HEIGHT - self.radius
         
@@ -82,8 +79,8 @@ class ball(pygame.sprite.Sprite):
 
         return impact_angle
     
-    def colissionCheck(self):
-        if pygame.sprite.spritecollideany(self, platforms):
+    def colissionCheck(self, group):
+        if pygame.sprite.spritecollideany(self, group):
             return True
         
 
@@ -91,9 +88,8 @@ class ball(pygame.sprite.Sprite):
         self.rect = pygame.Rect(self.posX - self.radius, self.posY - self.radius, self.radius * 2, self.radius * 2)
         pygame.draw.circle(screen, (255,255,255), (self.posX, self.posY), self.radius) #White (255,255,255) Outline to circle
         pygame.draw.circle(screen, (0,0,0), (self.posX, self.posY), self.radius - 1) #Main Black (0,0,0) circle body
-        pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball.#
+        pygame.draw.line(screen, (255,255,255), mouse_line[0], mouse_line[1]) #Draws line between mouse and ball
         pygame.draw.rect(screen, BLUE, self.rect)
-        self.colissionCheck()
 
 class platform(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height):
@@ -153,16 +149,17 @@ class goal(pygame.sprite.Sprite):
         self.radius = radius
         self.rect = pygame.Rect(self.x, self.y, self.radius, self.radius)
 
-    def win_check(self):
+    def win_check(self, muted):
         if pygame.sprite.spritecollideany(self, game_sprites):
-            self.sound.play()
+            if not muted:
+                self.sound.stop()
+                self.sound.play()
             return True
         return False
 
     def update(self):
         pygame.draw.circle(screen, (255,255,255), (self.x, self.y), self.radius)
         pygame.draw.circle(screen, (0,0,0), (self.x, self.y), self.radius - 1)
-        self.win_check()
                 
 def mutebuttoncheck(sound):
     global muted, image, mutebutton, music_volume
@@ -217,12 +214,8 @@ main_menu_buttons.add(settingsbutton)
 
 #Temp while setting up level select
 game_sprites = pygame.sprite.Group()
-platforms = pygame.sprite.Group()
 Ball = ball()
-Goal = goal(600, 400, 20)
-test_platform = platform(200, 200, 200, 10)
 game_sprites.add(Ball)
-platforms.add(test_platform)
 
 #Grouping settings buttons and variables together
 music_volume = 1
@@ -260,17 +253,40 @@ ingame_menu_buttons.add(volumedownbutton)
 ingame_menu_buttons.add(volumeupbutton)
 ingame_menu_buttons.add(quit_button)
 
-
-
-
 #Grouping level 1 objects and variables
 level_1_group = pygame.sprite.Group()
 l1platform1 = platform(200, 200, 200, 20)
 l1platform2 = platform(400, 700, 200, 20)
 l1platform3 = platform(500, 400, 200, 20)
+l1goal = goal(600, 300, 20)
 level_1_group.add(l1platform1)
 level_1_group.add(l1platform2)
 level_1_group.add(l1platform3)
+level_1_group.add(l1goal)
+
+#Grouping level 2 objects and variables
+level_2_group = pygame.sprite.Group()
+l2platform1 = platform(0, 300, 600, 10)
+l2goal = goal(200, 200, 20)
+level_2_group.add(l2goal)
+level_2_group.add(l2platform1)
+
+#Grouping level 3 objects and variables
+level_3_group = pygame.sprite.Group()
+l3goal = goal(100,100,20)
+l3platform1 = platform(0, 400, 450, 300)
+l3platform2 = platform(200, 120, 10, 280)
+level_3_group.add(l3platform1)
+level_3_group.add(l3platform2)
+level_3_group.add(l3goal)
+
+#Win Screen objects and variables
+win_buttons = pygame.sprite.Group()
+retry_button = imagebutton("D:\keep\Coursework\coursework\clockwise-rotation_small.png", (30, 700))
+backbutton2 = imagebutton('D:\keep\Coursework\coursework/previous-button_small.png', (700, 700))
+win_buttons.add(retry_button)
+win_buttons.add(backbutton2)
+
 
 #Defining some key variables to be used in the main loop
 click_posX = 0
@@ -288,8 +304,12 @@ first_play = True
 paused = False
 win = False
 currentlevel = 0
+seconds = 0
 
 levels = [False, False, False]
+level_groups = [level_1_group, level_2_group, level_3_group]
+level_goals = [l1goal, l2goal, l3goal]
+level_colours = [(71, 64, 64), (132, 50, 219), (130, 245, 159)]
 menu_sound = pygame.mixer.Sound("D:\keep\Coursework\coursework/menu.mp3")
 game_sound = pygame.mixer.Sound("D:\keep\Coursework\coursework/game.mp3")
 settings_sound = pygame.mixer.Sound("D:\keep\Coursework\coursework/settings.mp3")
@@ -331,24 +351,22 @@ while running:
         screen.blit(font_no2, (level_two_button.rect.topleft[0] + 30, level_two_button.rect.topleft[1]))
         screen.blit(font_no3, (level_three_button.rect.topleft[0] + 30, level_three_button.rect.topleft[1]))
         if first_play:
-            Ball.reset_ball()
-            game_sound.play(-1)
             first_play = False
             game_sound.set_volume(music_volume)
-        if level_one_button.clicked or level_two_button.clicked or level_three_button.clicked:   
+        if level_one_button.clicked or level_two_button.clicked or level_three_button.clicked:
+            start_ticks = pygame.time.get_ticks()  
             if level_one_button.clicked:
                 level_one_button.clicked = False
                 currentlevel = 1
                 levels[currentlevel - 1] = True
-                print("Level 1 Starting")
             if level_two_button.clicked:
+                currentlevel = 2
                 level_two_button.clicked = False
                 levels[currentlevel - 1] = True
-                currentlevel = 2
             if level_three_button.clicked:
+                currentlevel = 3
                 level_three_button.clicked = False
                 levels[currentlevel - 1] = True
-                currentlevel = 3
             first_play = True
             level_select = False
         mutebuttoncheck(game_sound)
@@ -404,7 +422,7 @@ while running:
             time = 0
             power *= 0.8 #Energy lost to wall              
     for event in events: 
-        if event.type == pygame.MOUSEBUTTONDOWN and (not (menu or settings or level_select)):
+        if event.type == pygame.MOUSEBUTTONDOWN and (not (menu or settings or level_select)) and (seconds > 0.1):
             if shoot == False:
                 shoot = True
                 x = Ball.posX
@@ -413,7 +431,22 @@ while running:
                 power = math.sqrt((mouse_line[1][1] - mouse_line[0][1])**2 + (mouse_line[1][0] - mouse_line[0][0])**2) #Pythagorous Thereom equation
                 angle = Ball.findAngle(pygame.mouse.get_pos()) #Passes in current mouse pos to find angle between it and the ball.
     if not (menu or settings or level_select):
-        if ingame_menu_check(events) or backbutton.clicked:
+        if backbutton.clicked or quit_button.clicked or retry_button.clicked:
+                mutebutton.change_pos((700, 700))
+                backbutton.change_pos((700, 30))
+                volumedownbutton.change_pos((volumedownbutton.pos[0] - 60, volumedownbutton.pos[1] + 250))
+                volumeupbutton.change_pos((volumedownbutton.pos[0] - 60, volumedownbutton.pos[1] + 250))
+        if quit_button.clicked:
+                    seconds = 0
+                    quit_button.clicked = False
+                    first_play = True
+                    menu = True
+                    shoot = False
+                    Ball.reset_ball()
+                    currentlevel = 0
+                    game_sound.stop()
+                    paused = False
+        if ((ingame_menu_check(events) or backbutton.clicked) and (not win)):
             if backbutton.clicked or paused:
                 backbutton.clicked = False
                 paused = False
@@ -423,44 +456,69 @@ while running:
                 backbutton.change_pos((110, 110))
                 volumedownbutton.change_pos((volumedownbutton.pos[0] + 60, volumedownbutton.pos[1] - 250))
                 volumeupbutton.change_pos((volumeupbutton.pos[0] + 60, volumeupbutton.pos[1] - 250))
-                paused = True            
+                paused = True
         if paused:
             levels[currentlevel - 1] = False #List is zero indexed, but I wanted to use the actual level number so I have to minus one to get the index.
             pygame.draw.rect(screen, "grey", (100, 100, 600, 600))
             volume_control(game_sound)
             screen.blit(music_volume_surf, (110, 400))
             ingame_menu_buttons.update()
-            mutebuttoncheck(game_sound)
-        if win:
-            pygame.draw.rect(screen, "grey", (100, 100, 600, 600))
-        if quit_button.clicked:
-            quit_button.clicked = False
-            mutebutton.change_pos((700, 700))
-            backbutton.change_pos((700, 30))
-            volumedownbutton.change_pos((volumedownbutton.pos[0] - 60, volumedownbutton.pos[1] + 250))
-            volumeupbutton.change_pos((volumedownbutton.pos[0] - 60, volumedownbutton.pos[1] + 250))
-            first_play = True
-            menu = True
-            currentlevel = 0
+            mutebuttoncheck(game_sound)            
+        elif win:
+            current_colour = level_colours[currentlevel - 1]
             game_sound.stop()
-            paused = False       
-        if currentlevel == 1 and levels[currentlevel - 1]:
-            screen.blit(yakuza_bg, (0,0))
-            test_platform.update()
-            game_sprites.update() #updating all game sprites
-            Goal.update()
-            if Goal.win_check():
-                levels[currentlevel - 1] = False
-                win = True
-        elif currentlevel == 2 and levels[currentlevel - 1]:
-            pass
-        elif currentlevel == 3 and levels[currentlevel - 1]:
-            pass    
+            seconds = 0
+            shoot = False
+            win_buttons.update()
+            pygame.draw.rect(screen, current_colour, pygame.Rect(0, 0, 1000, 150))
+            win_time = volume_font.render(("Completion in: " + str(temp_seconds)), False, (0,0,0))
+            screen.blit(win_time, (100, 50))
+            if retry_button.clicked:
+                retry_button.clicked = False
+                levels[currentlevel - 1] = True
+                win = False
+                Ball.reset_ball()
+                start_ticks = pygame.time.get_ticks()
+                game_sound.play(-1)
+            if backbutton2.clicked:
+                    seconds = 0
+                    backbutton2.clicked = False
+                    first_play = True
+                    level_select = True
+                    shoot = False
+                    win = False
+                    Ball.reset_ball()
+                    currentlevel = 0
+                    game_sound.stop()       
+        for level in levels:
+            if level:   
+                if first_play:
+                    first_play = False
+                    game_sound.play(-1)
+                if currentlevel == 1 and levels[currentlevel - 1]:
+                    screen.fill((71, 64, 64))
+                    level_1_group.update()
+                elif currentlevel == 2 and levels[currentlevel - 1]:
+                    screen.fill((132, 50, 219))
+                    level_2_group.update()
+                elif currentlevel == 3 and levels[currentlevel - 1]:
+                    screen.fill((130, 245, 159))
+                    level_3_group.update()
+                seconds = (pygame.time.get_ticks() - start_ticks) / 1000
+                timer_seconds = volume_font.render(str(seconds), False, (0, 0, 0))
+                screen.blit(timer_seconds, (330, 50))
+                if level_goals[currentlevel - 1].win_check(muted) and (not win):
+                        levels[currentlevel - 1] = False
+                        win = True
+                        temp_seconds = seconds
+                        backbutton.change_pos((600, 100))
+                game_sprites.update() #updating all game sprites 
     for event in events: 
             if event.type == pygame.QUIT: #When user presses the quit button
                 running = False #Ends game loop
-    if Ball.colissionCheck() == True:
+    if Ball.colissionCheck(level_groups[currentlevel - 1]) == True:
         Ball.reset_ball()
+        shoot = False
     pygame.display.flip()   
     clock.tick(FPS) #syncs clock up to game fps
 
